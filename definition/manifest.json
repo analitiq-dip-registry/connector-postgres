@@ -1,7 +1,7 @@
 {
-  "connector_id": "REPLACE-WITH-UUID",
-  "connector_name": "REPLACE",
-  "slug": "REPLACE",
+  "connector_name": "PostgreSQL",
+  "slug": "postgres",
   "version": "1.0.0",
+  "placeholders": [],
   "endpoints": []
 }

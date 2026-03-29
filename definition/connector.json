@@ -1,30 +1,89 @@
 {
-  "connector_name": "REPLACE",
-  "connector_type": "api",
-  "connector_descr": "REPLACE with a short description",
-  "slug": "REPLACE",
-  "base_url": "https://api.example.com/v1/",
-  "client_required": false,
+  "connector_name": "PostgreSQL",
+  "connector_type": "database",
+  "connector_descr": "Open-source relational database management system known for reliability, feature robustness, and performance",
+  "slug": "postgres",
+  "driver": "postgresql",
+  "enable_ssh": true,
+  "api_doc_url": "https://www.postgresql.org/docs/current/",
   "auth": {
-    "type": "api_key"
-  },
-  "headers": {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-    "Authorization": "Bearer ${api_key}"
+    "type": "db",
+    "authorize": {
+      "url": "/db_utils",
+      "method": "POST",
+      "body": "{\"test_connect_only\": true}"
+    }
   },
   "form_fields": [
     {
-      "name": "api_key",
-      "label": "API Key",
+      "name": "host",
+      "label": "Host",
+      "type": "text",
+      "required": true,
+      "default": "127.0.0.1",
+      "placeholder": "e.g. 127.0.0.1 or db.example.com"
+    },
+    {
+      "name": "port",
+      "label": "Port",
+      "type": "text",
+      "required": true,
+      "default": "5432"
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. my_database"
+    },
+    {
+      "name": "username",
+      "label": "Username",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. postgres"
+    },
+    {
+      "name": "password",
+      "label": "Password",
       "type": "password",
       "required": true,
       "secret": true
+    },
+    {
+      "name": "ssl_mode",
+      "label": "SSL Mode",
+      "type": "select",
+      "required": false,
+      "default": "prefer",
+      "options": [
+        { "label": "Disable", "value": "disable" },
+        { "label": "Allow", "value": "allow" },
+        { "label": "Prefer (Default)", "value": "prefer" },
+        { "label": "Require", "value": "require" },
+        { "label": "Verify CA", "value": "verify-ca" },
+        { "label": "Verify Full", "value": "verify-full" }
+      ]
+    },
+    {
+      "name": "ssl_ca",
+      "label": "SSL CA Certificate",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "ssl_cert",
+      "label": "SSL Client Certificate",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "ssl_key",
+      "label": "SSL Client Key",
+      "type": "textarea",
+      "required": false,
+      "secret": true
     }
-  ],
-  "timeout": 30,
-  "requests_per_second": {
-    "max_requests": 60,
-    "time_window_seconds": 60
-  }
+  ]
 }
