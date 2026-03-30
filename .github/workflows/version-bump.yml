@@ -84,3 +84,28 @@ jobs:
           git add definition/manifest.json CHANGELOG.md
           git commit -m "chore: bump version to $NEW_VERSION (#${{ github.event.pull_request.number }})"
           git push
+
+      - name: Notify registry
+        if: steps.bump.outputs.type != 'none'
+        run: |
+          MANIFEST="definition/manifest.json"
+          CONNECTOR="definition/connector.json"
+
+          SLUG=$(jq -r '.slug' "$MANIFEST")
+          NAME=$(jq -r '.connector_name' "$CONNECTOR")
+          TYPE=$(jq -r '.connector_type' "$CONNECTOR")
+          DRIVER=$(jq -r '.driver // empty' "$CONNECTOR")
+          VERSION=$(jq -r '.version' "$MANIFEST")
+          REPO="${{ github.repository }}"
+
+          gh api repos/analitiq-dip-registry/.github/dispatches \
+            --method POST \
+            -f event_type=connector-updated \
+            -f "client_payload[slug]=$SLUG" \
+            -f "client_payload[name]=$NAME" \
+            -f "client_payload[type]=$TYPE" \
+            -f "client_payload[driver]=$DRIVER" \
+            -f "client_payload[repo]=$REPO" \
+            -f "client_payload[version]=$VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.REGISTRY_DISPATCH_TOKEN }}
