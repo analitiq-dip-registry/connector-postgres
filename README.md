@@ -1,20 +1,20 @@
-# REPLACE_CONNECTOR_NAME
+# PostgreSQL
 
-REPLACE with a short description of what this connector does and what system it integrates with.
+Open-source relational database management system (RDBMS) known for reliability, feature robustness, and performance. PostgreSQL supports advanced data types, full ACID compliance, and extensibility, making it a popular choice for web applications, analytics, and geospatial workloads.
 
 ## What is this?
 
-This is a **connector** — a configuration that defines how to authenticate with REPLACE_SYSTEM_NAME and what data endpoints are available for reading and writing. It does not move data by itself. Instead, it is used by the [Analitiq](https://analitiq-app.com) data integration platform or the open-source `analitiq-core` engine to set up data pipelines.
+This is a **connector** -- a configuration that defines how to authenticate with PostgreSQL and what data is available for reading and writing. It does not move data by itself. Instead, it is used by the [Analitiq](https://analitiq-app.com) data integration platform or the open-source `analitiq-core` engine to set up data pipelines.
 
 ## How to use this connector
 
 There are two ways to use this connector:
 
-### Option 1 — Analitiq Cloud (no setup required)
+### Option 1 -- Analitiq Cloud (no setup required)
 
-All connectors from this registry are automatically available on [analitiq-app.com](https://analitiq-app.com). Simply log in, select the connector, and follow the on-screen instructions to connect your account.
+All connectors from this registry are automatically available on [analitiq-app.com](https://analitiq-app.com). Simply log in, select the connector, and follow the on-screen instructions to connect your database.
 
-### Option 2 — Open Source (self-hosted)
+### Option 2 -- Open Source (self-hosted)
 
 All connectors are open source and free to use. To get started:
 
@@ -27,43 +27,39 @@ The `analitiq-plugin-dataflow` plugin will automatically fetch the required conn
 
 ## Prerequisites
 
-REPLACE with what the user needs before they can connect. Be specific:
-
-- e.g., "A registered OAuth2 application with client ID and client secret"
-- e.g., "An API key generated from your account settings"
-- e.g., "Admin access to your organisation's account"
+- A running PostgreSQL server (version 12 or later recommended)
+- A database user account with appropriate permissions for the tables you need to access
+- Network access from the Analitiq platform to your PostgreSQL server (direct or via SSH tunnel)
+- If using SSL, the relevant CA certificate and/or client certificate and key
 
 ## Authentication
 
-REPLACE with a plain-language explanation of how to authenticate. If the system supports multiple authentication methods, explain when to use each one.
+PostgreSQL uses standard database credentials (username and password) to authenticate. The connector supports optional SSL encryption and SSH tunneling for secure connections.
 
 ### How to get your credentials
 
-REPLACE with step-by-step instructions:
-
-1. e.g., "Log in to your account at https://app.example.com"
-2. e.g., "Navigate to Settings > API Keys"
-3. e.g., "Click 'Generate New Key' and copy the key"
-
-## Available Endpoints
-
-The table below lists all data endpoints defined by this connector. Each endpoint represents a resource you can read from or write to.
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-|          |        |             |
+1. Log in to your PostgreSQL server as an administrator
+2. Create a dedicated user for the integration (recommended):
+   ```sql
+   CREATE USER analitiq_user WITH PASSWORD 'your_secure_password';
+   ```
+3. Grant the necessary privileges on the target database:
+   ```sql
+   GRANT CONNECT ON DATABASE your_database TO analitiq_user;
+   GRANT USAGE ON SCHEMA public TO analitiq_user;
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO analitiq_user;
+   ```
+4. Note the host address, port (default 5432), database name, username, and password
+5. If your PostgreSQL server requires SSL, obtain the CA certificate and optionally the client certificate and key from your database administrator
 
 ## Limitations
 
-REPLACE with any important limitations users should know about:
-
-- **Rate limits** — e.g., "The API allows 60 requests per minute"
-- **Data freshness** — e.g., "Data may be delayed by up to 15 minutes"
-- **Sandbox vs Production** — e.g., "Sandbox and production use different API keys"
+- **SSL mode** -- Defaults to `prefer`, which attempts encrypted connections but falls back to unencrypted if the server does not support SSL. Set to `require` or higher for enforced encryption. For production, `verify-ca` or `verify-full` is recommended.
+- **No rate limits** -- This is a direct database connection; no API rate limits apply. However, heavy queries may impact database performance.
 
 ## For AI agents
 
-This connector includes `CLAUDE.md` and `AGENTS.md` files — machine-readable references used by AI agents and agentic frameworks. They document authentication types, available endpoints, post-auth steps, and any caveats for programmatic use. Both files are kept identical — `CLAUDE.md` is for Claude Code, `AGENTS.md` is for other agent frameworks.
+This connector includes `CLAUDE.md` and `AGENTS.md` files -- machine-readable references used by AI agents and agentic frameworks. They document authentication types, caveats, and connection details for programmatic use. Both files are kept identical -- `CLAUDE.md` is for Claude Code, `AGENTS.md` is for other agent frameworks.
 
 ## Create a connector to any system
 
@@ -77,7 +73,7 @@ You can create a new connector to any API or database using Claude and the Anali
 3. Launch Claude and say: *"I want to create a connector for [system name]"*
 4. The plugin will interview you about the system, research its API documentation, and generate the full connector with all required files
 
-No coding required — the plugin handles authentication research, endpoint schema generation, and file creation automatically.
+No coding required -- the plugin handles authentication research, endpoint schema generation, and file creation automatically.
 
 ![Example of Claude building a connector](media/example_1.png)
 
@@ -87,6 +83,6 @@ All connectors in this registry are community-maintained and live at [github.com
 
 ## Links
 
-- [API Documentation](REPLACE with URL)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/current/)
 - [Analitiq Cloud](https://analitiq-app.com)
 - [Analitiq Core (open source)](https://github.com/analitiq-core)
