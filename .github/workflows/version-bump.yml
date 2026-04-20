@@ -130,6 +130,6 @@ jobs:
 
           curl --fail-with-body --silent --show-error \
             -X POST "$WEBHOOK_URL" \
-            -H "Authorization: Bearer $WEBHOOK_API_KEY" \
+            -H "x-api-key: $WEBHOOK_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
