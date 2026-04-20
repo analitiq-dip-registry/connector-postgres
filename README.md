@@ -88,4 +88,4 @@ All connectors in this registry are community-maintained and live at [github.com
 
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/current/)
 - [Analitiq Cloud](https://analitiq-app.com)
-- [Analitiq Core (open source)](https://github.com/analitiq-core)
+- [Analitiq Engine (open source)](https://github.com/analitiq-ai/analitiq-engine)
