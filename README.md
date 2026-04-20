@@ -6,7 +6,7 @@ Open-source relational database management system (RDBMS) known for reliability,
 
 ## What is this?
 
-This is a **connector** -- a configuration that defines how to authenticate with PostgreSQL and what data is available for reading and writing. It does not move data by itself. Instead, it is used by the [Analitiq](https://analitiq-app.com) data integration platform or the open-source `analitiq-core` engine to set up data pipelines.
+This is a **connector** -- a configuration that defines how to authenticate with PostgreSQL and what data is available for reading and writing. It does not move data by itself. Instead, it is used by the [Analitiq](https://analitiq-app.com) data integration platform or the open-source [Analitiq Engine](https://github.com/analitiq-ai/analitiq-engine) to set up data pipelines.
 
 ## How to use this connector
 
@@ -20,9 +20,9 @@ All connectors from this registry are automatically available on [analitiq-app.c
 
 All connectors are open source and free to use. To get started:
 
-1. Clone the [analitiq-core](https://github.com/analitiq-core) repository
+1. Clone the [analitiq-engine](https://github.com/analitiq-ai/analitiq-engine) repository
 2. Install the Claude plugin `analitiq-plugin-dataflow`
-3. Launch Claude in the root directory of `analitiq-core`
+3. Launch Claude in the root directory of `analitiq-engine`
 4. Tell it: *"I need to move data from X to Y"*
 
 The `analitiq-plugin-dataflow` plugin will automatically fetch the required connectors from the [Analitiq DIP Registry](https://github.com/analitiq-dip-registry) and set up the data flow pipeline for you.
