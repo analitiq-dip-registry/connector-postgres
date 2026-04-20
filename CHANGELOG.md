@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2026-04-20
+
+### Fixed
+- bug: use x-api-key header for Analitiq webhook (#6)
+
 ## [1.1.0] - 2026-04-20
 
 ### Added
