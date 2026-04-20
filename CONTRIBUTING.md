@@ -52,13 +52,25 @@ No coding required — the plugin handles authentication research, endpoint sche
 
 ## What the automated pipeline does
 
-When a PR is merged with a version label:
+When a PR is merged into `main` with a version label, the `Version Bump on PR Merge` workflow runs and:
 
-1. The version in `definition/manifest.json` is bumped according to the label
-2. A new entry is added to `CHANGELOG.md` with the PR title and date
-3. The changes are committed and pushed automatically
+1. Bumps the version in `definition/manifest.json` according to the label
+2. Appends a new entry to `CHANGELOG.md` with the PR title and date
+3. Commits and pushes the bump to `main`
+4. Creates a git tag `vX.Y.Z` and a matching GitHub Release targeting `main`
+5. POSTs a notification to the Analitiq registry webhook with the release metadata (`slug`, `name`, `type`, `repo`, `version`, `tag`, `release_url`, `published_at`, `bump`)
 
-If no version label is applied, the version is not changed.
+### When a release is NOT created
+
+- **PRs merged without a version label** — the workflow exits before step 1. Nothing is bumped, tagged, released, or notified.
+- **PRs closed without merging** — workflow does not run.
+- **Direct pushes to `main`** — workflow is `pull_request`-gated, so direct pushes (including the bot's own bump commit) do not trigger it.
+
+### Creating a release when you're ready
+
+The intended path is: **apply a version label to the PR before merging**. That is the only "release button" — merging a labeled PR runs the full pipeline end-to-end.
+
+If you already merged a PR without a label and want a release, open a small follow-up PR (for example a docs tweak) with the desired `version:*` label and merge it. Do not create tags or GitHub Releases by hand — doing so bypasses the manifest bump, the CHANGELOG entry, and the webhook notification, and leaves the registry out of sync.
 
 ## Repository structure
 
@@ -75,10 +87,6 @@ connector-{name}/
     └── endpoints/          # Individual endpoint JSON definitions
         └── {name}.json
 ```
-
-## Feature requests and bug reports
-
-If you have an idea for a new connector, want to request an endpoint, or found a bug, please [open a GitHub issue](https://github.com/analitiq-dip-registry/connector-template/issues) on the relevant connector repo. Use the issue to describe what you need and any context that would help.
 
 ## Questions?
 

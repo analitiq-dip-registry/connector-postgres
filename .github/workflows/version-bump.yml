@@ -85,27 +85,51 @@ jobs:
           git commit -m "chore: bump version to $NEW_VERSION (#${{ github.event.pull_request.number }})"
           git push
 
-      - name: Notify registry
+      - name: Create GitHub Release
         if: steps.bump.outputs.type != 'none'
-        run: |
-          MANIFEST="definition/manifest.json"
-          CONNECTOR="definition/connector.json"
-
-          SLUG=$(jq -r '.slug' "$MANIFEST")
-          NAME=$(jq -r '.connector_name' "$CONNECTOR")
-          TYPE=$(jq -r '.connector_type' "$CONNECTOR")
-          DRIVER=$(jq -r '.driver // empty' "$CONNECTOR")
-          VERSION=$(jq -r '.version' "$MANIFEST")
-          REPO="${{ github.repository }}"
-
-          gh api repos/analitiq-dip-registry/.github/dispatches \
-            --method POST \
-            -f event_type=connector-updated \
-            -f "client_payload[slug]=$SLUG" \
-            -f "client_payload[name]=$NAME" \
-            -f "client_payload[type]=$TYPE" \
-            -f "client_payload[driver]=$DRIVER" \
-            -f "client_payload[repo]=$REPO" \
-            -f "client_payload[version]=$VERSION"
         env:
-          GH_TOKEN: ${{ secrets.REGISTRY_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          TAG="v$NEW_VERSION"
+          NOTES="- $PR_TITLE (#$PR_NUMBER)"
+          gh release create "$TAG" \
+            --target main \
+            --title "$TAG" \
+            --notes "$NOTES"
+          RELEASE_URL=$(gh release view "$TAG" --json url --jq .url)
+          PUBLISHED_AT=$(gh release view "$TAG" --json publishedAt --jq .publishedAt)
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "RELEASE_URL=$RELEASE_URL" >> "$GITHUB_ENV"
+          echo "RELEASE_PUBLISHED_AT=$PUBLISHED_AT" >> "$GITHUB_ENV"
+
+      - name: Notify Analitiq webhook
+        if: steps.bump.outputs.type != 'none'
+        env:
+          WEBHOOK_URL: ${{ vars.ANALITIQ_WEBHOOK_URL }}
+          WEBHOOK_API_KEY: ${{ secrets.ANALITIQ_WEBHOOK_API_KEY }}
+          REPO: ${{ github.repository }}
+          BUMP_TYPE: ${{ steps.bump.outputs.type }}
+        run: |
+          SLUG=$(jq -r '.slug // ""' definition/manifest.json)
+          CONNECTOR_NAME=$(jq -r '.connector_name // ""' definition/manifest.json)
+          CONNECTOR_TYPE=$(jq -r '.connector_type // ""' definition/connector.json)
+
+          PAYLOAD=$(jq -n \
+            --arg slug "$SLUG" \
+            --arg name "$CONNECTOR_NAME" \
+            --arg type "$CONNECTOR_TYPE" \
+            --arg repo "$REPO" \
+            --arg version "$NEW_VERSION" \
+            --arg tag "$RELEASE_TAG" \
+            --arg release_url "$RELEASE_URL" \
+            --arg published_at "$RELEASE_PUBLISHED_AT" \
+            --arg bump "$BUMP_TYPE" \
+            '{slug: $slug, name: $name, type: $type, repo: $repo, version: $version, tag: $tag, release_url: $release_url, published_at: $published_at, bump: $bump}')
+
+          curl --fail-with-body --silent --show-error \
+            -X POST "$WEBHOOK_URL" \
+            -H "Authorization: Bearer $WEBHOOK_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
