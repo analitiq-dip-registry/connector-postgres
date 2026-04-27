@@ -33,13 +33,13 @@ jobs:
             echo "type=none" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bump manifest version
+      - name: Bump connector version
         if: steps.bump.outputs.type != 'none'
         run: |
           BUMP_TYPE="${{ steps.bump.outputs.type }}"
-          MANIFEST="definition/manifest.json"
+          CONNECTOR="definition/connector.json"
 
-          CURRENT=$(jq -r '.version' "$MANIFEST")
+          CURRENT=$(jq -r '.version' "$CONNECTOR")
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 
           case "$BUMP_TYPE" in
@@ -49,7 +49,7 @@ jobs:
           esac
 
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          jq --arg v "$NEW_VERSION" '.version = $v' "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+          jq --arg v "$NEW_VERSION" '.version = $v' "$CONNECTOR" > tmp.json && mv tmp.json "$CONNECTOR"
           echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
 
       - name: Update CHANGELOG.md
@@ -81,7 +81,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add definition/manifest.json CHANGELOG.md
+          git add definition/connector.json CHANGELOG.md
           git commit -m "chore: bump version to $NEW_VERSION (#${{ github.event.pull_request.number }})"
           git push
 
@@ -112,8 +112,8 @@ jobs:
           REPO: ${{ github.repository }}
           BUMP_TYPE: ${{ steps.bump.outputs.type }}
         run: |
-          SLUG=$(jq -r '.slug // ""' definition/manifest.json)
-          CONNECTOR_NAME=$(jq -r '.connector_name // ""' definition/manifest.json)
+          SLUG=$(jq -r '.slug // ""' definition/connector.json)
+          CONNECTOR_NAME=$(jq -r '.connector_name // ""' definition/connector.json)
           CONNECTOR_TYPE=$(jq -r '.connector_type // ""' definition/connector.json)
 
           PAYLOAD=$(jq -n \
