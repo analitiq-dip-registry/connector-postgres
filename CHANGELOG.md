@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.3] - 2026-04-27
+
+### Fixed
+- feat: consolidate manifest into connector.json and add type map (#9)
+
 ## [0.0.2] - 2026-04-20
 
 ### Fixed

@@ -3,7 +3,7 @@
   "connector_type": "database",
   "connector_descr": "Open-source relational database management system known for reliability, feature robustness, and performance",
   "slug": "postgres",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "placeholders": [],
   "endpoints": [],
   "driver": "postgresql",
@@ -61,12 +61,30 @@
       "required": false,
       "default": "prefer",
       "options": [
-        { "label": "Disable", "value": "disable" },
-        { "label": "Allow", "value": "allow" },
-        { "label": "Prefer (Default)", "value": "prefer" },
-        { "label": "Require", "value": "require" },
-        { "label": "Verify CA", "value": "verify-ca" },
-        { "label": "Verify Full", "value": "verify-full" }
+        {
+          "label": "Disable",
+          "value": "disable"
+        },
+        {
+          "label": "Allow",
+          "value": "allow"
+        },
+        {
+          "label": "Prefer (Default)",
+          "value": "prefer"
+        },
+        {
+          "label": "Require",
+          "value": "require"
+        },
+        {
+          "label": "Verify CA",
+          "value": "verify-ca"
+        },
+        {
+          "label": "Verify Full",
+          "value": "verify-full"
+        }
       ]
     },
     {
