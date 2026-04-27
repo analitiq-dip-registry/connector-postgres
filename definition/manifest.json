@@ -1,7 +1,0 @@
-{
-  "connector_name": "PostgreSQL",
-  "slug": "postgres",
-  "version": "0.0.2",
-  "placeholders": [],
-  "endpoints": []
-}
