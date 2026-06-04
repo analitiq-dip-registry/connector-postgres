@@ -18,6 +18,7 @@ import pyarrow as pa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from cdk.sql.dialects import Query, SqlDialect
+from cdk.transport_factory import ca_ssl_context
 from cdk.sql.generic import GenericSQLConnector
 from cdk.type_map import TypeMapper, parse_arrow_type
 
@@ -110,6 +111,34 @@ class PostgresDialect(SqlDialect):
         return stmt.on_conflict_do_update(
             index_elements=conflict_keys,
             set_=update_cols,
+        )
+
+    def build_tls_connect_arg(self, mode: str, ca_pem: str | None) -> Any:
+        """libpq-native SSL modes for asyncpg / libpq-compatible drivers.
+
+        ``disable``/``allow``/``prefer``/``require`` pass through as
+        strings; ``verify-ca``/``verify-full`` need an explicit SSLContext
+        built from the connection's CA bundle.
+        """
+        if mode in ("disable", "allow", "prefer", "require"):
+            return mode
+        if mode == "verify-ca":
+            if not ca_pem:
+                raise ValueError(
+                    "tls.mode='verify-ca' requires tls.ca_certificate to "
+                    "resolve to a PEM certificate bundle"
+                )
+            return ca_ssl_context(ca_pem, check_hostname=False)
+        if mode == "verify-full":
+            if not ca_pem:
+                raise ValueError(
+                    "tls.mode='verify-full' requires tls.ca_certificate to "
+                    "resolve to a PEM certificate bundle"
+                )
+            return ca_ssl_context(ca_pem, check_hostname=True)
+        raise ValueError(
+            f"{self.name} tls.mode {mode!r} not recognized; expected one of: "
+            "disable, allow, prefer, require, verify-ca, verify-full"
         )
 
     def sqlalchemy_pre_ddl(self, schema_name: str) -> List[str]:
