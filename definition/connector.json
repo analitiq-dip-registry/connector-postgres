@@ -1,6 +1,7 @@
 {
   "$schema": "https://schemas.analitiq.ai/connector/latest.json",
   "kind": "database",
+  "connector_id": "postgres",
   "display_name": "PostgreSQL",
   "description": "Open-source relational database management system known for reliability, feature robustness, and performance",
   "documentation_url": "https://www.postgresql.org/docs/current/",

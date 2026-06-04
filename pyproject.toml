@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analitiq-connector-postgres"
+version = "0.1.0"
+description = "Analitiq connector for PostgreSQL: dialect, driver, definition."
+requires-python = ">=3.11"
+# Driver dependencies live in requirements.txt (single source of truth);
+# the CDK itself is provided by the engine environment.
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+# The repo root IS the package: connector.py + __init__.py at the top level,
+# per the documented connector layout.
+[tool.setuptools]
+packages = ["analitiq_connector_postgres"]
+package-dir = { "analitiq_connector_postgres" = "." }
+
+# Entry-point name = connector_id; the engine registry resolves
+# (kind, connector_id) and these win over the generic kind default.
+[project.entry-points."analitiq.source_connectors"]
+postgres = "analitiq_connector_postgres.connector:PostgresConnector"
+
+[project.entry-points."analitiq.destination_connectors"]
+postgres = "analitiq_connector_postgres.connector:PostgresConnector"
