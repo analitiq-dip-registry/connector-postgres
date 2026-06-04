@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.0] - 2026-06-04
+
+### Added
+- feat: package connector with CDK dialect class and driver deps (#18)
+
 ## [0.0.7] - 2026-05-15
 
 ### Fixed
