@@ -20,8 +20,10 @@ dependencies = { file = ["requirements.txt"] }
 packages = ["analitiq_connector_postgres"]
 package-dir = { "analitiq_connector_postgres" = "." }
 
-# Entry-point name = connector_id; the engine registry resolves
-# (kind, connector_id) and these win over the generic kind default.
+# Entry-point name is the connector slug (the repo name); the engine
+# registry resolves (kind, slug) and these win over the generic kind
+# default. connector_id in definition/connector.json is the
+# registry-assigned identifier (e.g. a UUID), not the entry-point name.
 [project.entry-points."analitiq.source_connectors"]
 postgres = "analitiq_connector_postgres.connector:PostgresConnector"
 
