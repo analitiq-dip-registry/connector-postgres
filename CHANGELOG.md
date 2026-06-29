@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.1] - 2026-06-29
+
+### Fixed
+- fix: map native JSON/JSONB to canonical Json on read (#19)
+
 ## [0.1.0] - 2026-06-04
 
 ### Added
