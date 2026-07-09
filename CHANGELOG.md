@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.2] - 2026-07-09
+
+### Fixed
+- fix: map PostgreSQL array types to Json container and set connector_id to repo slug (#20)
+
 ## [0.1.1] - 2026-06-29
 
 ### Fixed
