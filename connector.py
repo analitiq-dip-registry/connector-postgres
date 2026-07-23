@@ -35,23 +35,26 @@ class PostgresDialect(SqlDialect):
     def schemas_query(self, catalog: str = "") -> tuple[str, list[object]]:
         """List user schemas as a ``(sql, params)`` query tuple.
 
+        A PostgreSQL connection can only see its own database, so a
+        non-empty ``catalog`` is rejected up front via ``_check_catalog``
+        (``CatalogAddressingError`` — this dialect does not declare
+        ``supports_catalog_addressing``) rather than filtered into a
+        silently empty result.
+
         ``system_schemas`` is exact-match only, so the numbered per-session
         schemas (``pg_temp_N`` / ``pg_toast_temp_N``) cannot be enumerated
         in the NOT IN list — they are excluded with NOT LIKE filters.
         """
+        self._check_catalog(catalog)
         placeholders = ", ".join("?" for _ in self.system_schemas)
-        params: list[object] = list(self.system_schemas)
         sql = (
             "SELECT schema_name FROM information_schema.schemata "
             f"WHERE schema_name NOT IN ({placeholders}) "
             "AND schema_name NOT LIKE 'pg_temp_%' "
-            "AND schema_name NOT LIKE 'pg_toast_temp_%'"
+            "AND schema_name NOT LIKE 'pg_toast_temp_%' "
+            "ORDER BY schema_name"
         )
-        if catalog:
-            sql += " AND catalog_name = ?"
-            params.append(catalog)
-        sql += " ORDER BY schema_name"
-        return sql, params
+        return sql, list(self.system_schemas)
 
     def schema_is_implicit_default(self, schema_name: str) -> bool:
         """``public`` needs no CREATE SCHEMA: it exists in every database.
