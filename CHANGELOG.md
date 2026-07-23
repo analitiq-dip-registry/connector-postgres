@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.0] - 2026-07-23
+
+### Changed
+- feat: align connector with rc13 contracts (ADBC default transport, precision-preserving type maps) (#21)
+
 ## [0.1.2] - 2026-07-09
 
 ### Fixed
