@@ -46,8 +46,7 @@
         }
       },
       "db_kwargs": {
-        "adbc.postgresql.sslmode": { "ref": "connection.parameters.ssl_mode" },
-        "adbc.postgresql.sslrootcert": { "ref": "secrets.ssl_ca_certificate" }
+        "adbc.postgresql.sslmode": { "ref": "connection.parameters.ssl_mode" }
       }
     },
     "sqlalchemy": {

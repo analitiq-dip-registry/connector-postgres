@@ -1,5 +1,9 @@
-# ADBC transport (default): first-class PostgreSQL driver, libpq COPY-based Arrow ingestion.
-adbc-driver-postgresql
-adbc-driver-manager
+# THIS connector's drivers only. The engine environment provides
+# SQLAlchemy and the CDK — never list them here, even if an import
+# appears "missing".
+# ADBC transport (default): first-class PostgreSQL driver, libpq
+# COPY-based Arrow ingestion.
+adbc-driver-postgresql>=1.1.0
+adbc-driver-manager>=1.1.0
 # SQLAlchemy transport: async DBAPI for postgresql+asyncpg.
-asyncpg
+asyncpg>=0.28.0

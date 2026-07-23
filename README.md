@@ -59,6 +59,8 @@ PostgreSQL uses standard database credentials (username and password) to authent
 ## Limitations
 
 - **SSL mode** -- Defaults to `prefer`, which attempts encrypted connections but falls back to unencrypted if the server does not support SSL. Set to `require` or higher for enforced encryption. For production, `verify-ca` or `verify-full` is recommended.
+- **CA-pinned verification by transport** -- The uploaded SSL CA certificate is applied on the SQLAlchemy transport. On the default ADBC transport, `verify-ca`/`verify-full` rely on libpq's default CA lookup (`~/.postgresql/root.crt`); the uploaded certificate is not passed through, so use the `sqlalchemy` transport when CA pinning is required.
+- **Upserts on the default transport require PostgreSQL 15+** -- The ADBC write path implements upserts via `MERGE`, available from PostgreSQL 15. On older servers, use the `sqlalchemy` transport (`INSERT ... ON CONFLICT`), which works on all supported versions.
 - **No rate limits** -- This is a direct database connection; no API rate limits apply. However, heavy queries may impact database performance.
 - **Schema access** -- The user must have `USAGE` privilege on each schema they need to access. By default, only `public` is accessible.
 

@@ -12,10 +12,17 @@ dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 
+# The repo root IS the Python package: package-dir maps the importable
+# name onto ".", so connector.py and definition/ ship inside the wheel
+# without a src/ re-layout.
 [tool.setuptools]
 packages = ["analitiq_connector_postgres"]
 package-dir = { "analitiq_connector_postgres" = "." }
 
+# Entry-point names must equal the connector_id slug, and connector_id
+# must equal the repo name — the registry sync webhook rejects (422)
+# any mismatch. Both groups are required: read and write are both
+# first-class for this connector.
 [project.entry-points."analitiq.source_connectors"]
 postgres = "analitiq_connector_postgres.connector:PostgresConnector"
 
