@@ -3,12 +3,53 @@
   "kind": "database",
   "connector_id": "postgres",
   "display_name": "PostgreSQL",
-  "description": "Open-source relational database management system known for reliability, feature robustness, and performance",
+  "description": "PostgreSQL database connector. Reads and writes Arrow data over the first-class ADBC libpq driver (COPY-based bulk ingestion) as the default transport, with an async SQLAlchemy (asyncpg) transport as the engine-side SQL path. Username/password authentication, libpq TLS modes (disable through verify-full), and table/view discovery via information_schema.",
   "documentation_url": "https://www.postgresql.org/docs/current/",
+  "tags": [
+    "database",
+    "postgresql",
+    "postgres",
+    "sql",
+    "adbc",
+    "sqlalchemy"
+  ],
   "version": "0.1.2",
   "default_transport": "database",
   "transports": {
     "database": {
+      "transport_type": "adbc",
+      "driver": "postgresql",
+      "dsn": {
+        "kind": "url_template",
+        "template": "postgresql://{username}:{password}@{host}:{port}/{database}",
+        "bindings": {
+          "username": {
+            "value": { "ref": "connection.parameters.username" },
+            "encoding": "url_userinfo"
+          },
+          "password": {
+            "value": { "ref": "secrets.password" },
+            "encoding": "url_userinfo"
+          },
+          "host": {
+            "value": { "ref": "connection.parameters.host" },
+            "encoding": "host"
+          },
+          "port": {
+            "value": { "ref": "connection.parameters.port" },
+            "encoding": "raw"
+          },
+          "database": {
+            "value": { "ref": "connection.parameters.database" },
+            "encoding": "url_path_segment"
+          }
+        }
+      },
+      "db_kwargs": {
+        "adbc.postgresql.sslmode": { "ref": "connection.parameters.ssl_mode" }
+      }
+    },
+    "sqlalchemy": {
       "transport_type": "sqlalchemy",
       "driver": "postgresql+asyncpg",
       "dsn": {
@@ -16,44 +57,30 @@
         "template": "postgresql+asyncpg://{username}:{password}@{host}:{port}/{database}",
         "bindings": {
           "username": {
-            "value": {
-              "ref": "connection.parameters.username"
-            },
+            "value": { "ref": "connection.parameters.username" },
             "encoding": "url_userinfo"
           },
           "password": {
-            "value": {
-              "ref": "secrets.password"
-            },
+            "value": { "ref": "secrets.password" },
             "encoding": "url_userinfo"
           },
           "host": {
-            "value": {
-              "ref": "connection.parameters.host"
-            },
+            "value": { "ref": "connection.parameters.host" },
             "encoding": "host"
           },
           "port": {
-            "value": {
-              "ref": "connection.parameters.port"
-            },
+            "value": { "ref": "connection.parameters.port" },
             "encoding": "raw"
           },
           "database": {
-            "value": {
-              "ref": "connection.parameters.database"
-            },
+            "value": { "ref": "connection.parameters.database" },
             "encoding": "url_path_segment"
           }
         }
       },
       "tls": {
-        "mode": {
-          "ref": "connection.parameters.ssl_mode"
-        },
-        "ca_certificate": {
-          "ref": "secrets.ssl_ca_certificate"
-        }
+        "mode": { "ref": "connection.parameters.ssl_mode" },
+        "ca_certificate": { "ref": "secrets.ssl_ca_certificate" }
       }
     }
   },
@@ -101,7 +128,7 @@
       },
       "username": {
         "source": "user",
-        "phase": "pre_auth",
+        "phase": "auth",
         "storage": "connection.parameters",
         "type": "string",
         "required": true,
@@ -113,7 +140,7 @@
       },
       "password": {
         "source": "user",
-        "phase": "pre_auth",
+        "phase": "auth",
         "storage": "secrets",
         "type": "string",
         "required": true,
@@ -129,7 +156,6 @@
         "storage": "connection.parameters",
         "type": "string",
         "required": false,
-        "default": "prefer",
         "enum": [
           "disable",
           "allow",
@@ -138,34 +164,17 @@
           "verify-ca",
           "verify-full"
         ],
+        "default": "prefer",
         "ui": {
           "label": "SSL Mode",
           "widget": "select",
           "options": [
-            {
-              "label": "Disable",
-              "value": "disable"
-            },
-            {
-              "label": "Allow",
-              "value": "allow"
-            },
-            {
-              "label": "Prefer (Default)",
-              "value": "prefer"
-            },
-            {
-              "label": "Require",
-              "value": "require"
-            },
-            {
-              "label": "Verify CA",
-              "value": "verify-ca"
-            },
-            {
-              "label": "Verify Full",
-              "value": "verify-full"
-            }
+            { "value": "disable", "label": "Disable" },
+            { "value": "allow", "label": "Allow" },
+            { "value": "prefer", "label": "Prefer (Default)" },
+            { "value": "require", "label": "Require" },
+            { "value": "verify-ca", "label": "Verify CA" },
+            { "value": "verify-full", "label": "Verify Full" }
           ]
         }
       },
@@ -187,18 +196,34 @@
         {
           "when": {
             "field": "ssl_mode",
-            "operator": "in",
-            "value": [
-              "verify-ca",
-              "verify-full"
-            ]
+            "in": ["verify-ca", "verify-full"]
           },
-          "require": [
-            "ssl_ca_certificate"
-          ],
+          "require": ["ssl_ca_certificate"],
           "message": "ssl_ca_certificate is required when ssl_mode is verify-ca or verify-full"
         }
       ]
+    }
+  },
+  "resource_discovery": {
+    "strategy": "information_schema",
+    "transport_ref": "database",
+    "implementation": {
+      "type": "builtin"
+    },
+    "options": {
+      "exclude_schemas": [
+        "information_schema",
+        "pg_catalog",
+        "pg_toast"
+      ]
+    },
+    "produces": [
+      "connection.endpoints",
+      "connection.type_map"
+    ],
+    "triggers": {
+      "list_resources": "on_activation",
+      "describe_resource": "on_resource_selected"
     }
   }
 }

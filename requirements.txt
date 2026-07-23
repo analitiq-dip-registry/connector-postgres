@@ -1,6 +1,9 @@
-# THIS connector's drivers only (the engine pins no database drivers).
-# asyncpg drives the SQLAlchemy transport; the ADBC pair drives the
-# libpq-based ADBC transport (transport_type: "adbc").
-asyncpg>=0.28.0
+# THIS connector's drivers only. The engine environment provides
+# SQLAlchemy and the CDK — never list them here, even if an import
+# appears "missing".
+# ADBC transport (default): first-class PostgreSQL driver, libpq
+# COPY-based Arrow ingestion.
 adbc-driver-postgresql>=1.1.0
 adbc-driver-manager>=1.1.0
+# SQLAlchemy transport: async DBAPI for postgresql+asyncpg.
+asyncpg>=0.28.0
