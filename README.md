@@ -86,7 +86,7 @@ The connector ships two transports and uses ADBC by default:
 - **`database` (ADBC, default)** -- the first-class `adbc-driver-postgresql` driver. Reads and writes Arrow buffers directly and bulk-loads via PostgreSQL's native `COPY` protocol, so there is no row-by-row path.
 - **`sqlalchemy`** -- `postgresql+asyncpg`, used as the engine-side SQL and metadata path.
 
-Both transports receive the SSL mode and the CA certificate.
+The two transports handle TLS differently. The SSL mode is carried in the ADBC DSN as a query parameter; the CA certificate is applied only on the `sqlalchemy` transport (via an `SSLContext`). The ADBC transport cannot use the stored PEM secret for CA pinning: the libpq ADBC driver rejects every `adbc.postgresql.*` option with `NOT_IMPLEMENTED`, and libpq's `sslrootcert` expects a filesystem path, not PEM text. Under ADBC, `verify-ca` and `verify-full` fall back to libpq's default CA lookup at `~/.postgresql/root.crt`. **Select the `sqlalchemy` transport when you need to pin a CA certificate.**
 
 Tables and views are discovered at runtime from `information_schema`; the `information_schema`, `pg_catalog`, and `pg_toast` schemas are excluded automatically.
 
@@ -121,6 +121,7 @@ Writing back, `Json` / `Object` / `List` all render as `JSONB`, and `UInt64` ren
 ## Limitations
 
 - **SSL mode defaults to `prefer`**, which attempts an encrypted connection but falls back to unencrypted if the server declines. Set `require` or higher to forbid that fallback; `verify-ca` or `verify-full` is recommended for production.
+- **CA pinning is not available on the default ADBC transport.** The `ssl_ca_certificate` is applied only on the `sqlalchemy` transport. Under ADBC, `verify-ca` and `verify-full` fall back to libpq's default CA lookup at `~/.postgresql/root.crt`. Select the `sqlalchemy` transport when CA pinning is required.
 - **`time with time zone` loses its offset** on read (see [Type mapping](#type-mapping)). Use `timestamptz` if the offset matters.
 - **Unconstrained `NUMERIC` arrives as text**, not a decimal. This is deliberate -- PostgreSQL allows far more precision than any Arrow decimal can hold -- but downstream consumers must cast if they need arithmetic.
 - **Catalog addressing is not supported.** A PostgreSQL session can only see its own database, so replicating across databases requires one connection per database.
@@ -138,7 +139,7 @@ Version 2.0.0 changes how several types are converted. If you have existing pipe
 
 `Duration` now writes as `TEXT` instead of `INTERVAL`, so that the read and write maps converge.
 
-**CA pinning works on the `sqlalchemy` transport only.** The uploaded `ssl_ca_certificate` is applied there. It cannot reach the default ADBC transport: the libpq ADBC driver rejects every `adbc.postgresql.*` database option with `NOT_IMPLEMENTED` before any network I/O, and libpq's own `sslrootcert` expects a filesystem path, which a stored PEM secret cannot supply. Under ADBC, `verify-ca` and `verify-full` fall back to libpq's default CA lookup at `~/.postgresql/root.crt`. Select the `sqlalchemy` transport when you need to pin a CA.
+**CA pinning on the default ADBC transport is not possible.** See [Transports](#transports) and [Limitations](#limitations) for details.
 
 ## For AI agents
 
