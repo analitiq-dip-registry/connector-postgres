@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "analitiq-connector-postgres"
-version = "0.1.2"
+version = "0.2.0"
 description = "Analitiq connector for PostgreSQL: dialect, driver, definition."
 requires-python = ">=3.11"
 dynamic = ["dependencies"]
@@ -20,7 +20,7 @@ packages = ["analitiq_connector_postgres"]
 package-dir = { "analitiq_connector_postgres" = "." }
 
 # Entry-point names must equal the connector_id slug, and connector_id
-# must equal the repo name — the registry sync webhook rejects (422)
+# must equal the repo name - the registry sync webhook rejects (422)
 # any mismatch. Both groups are required: read and write are both
 # first-class for this connector.
 [project.entry-points."analitiq.source_connectors"]

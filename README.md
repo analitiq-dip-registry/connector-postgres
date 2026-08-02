@@ -33,12 +33,22 @@ The `analitiq-plugin-dataflow` plugin will automatically fetch the required conn
 
 - A running PostgreSQL server (version 12 or later recommended)
 - A database user account with appropriate permissions for the tables you need to access
-- Network access from the Analitiq platform to your PostgreSQL server (direct or via SSH tunnel)
-- If using SSL, the relevant CA certificate and/or client certificate and key
+- Network access from the Analitiq platform to your PostgreSQL server
+- If using `verify-ca` or `verify-full` SSL, the CA certificate that issued your server certificate
 
 ## Authentication
 
-PostgreSQL uses standard database credentials (username and password) to authenticate. The connector supports optional SSL encryption and SSH tunneling for secure connections.
+PostgreSQL uses standard database credentials (username and password) to authenticate, with optional TLS.
+
+| Input | Required | Notes |
+|---|---|---|
+| `host` | yes | Hostname or IP address of the server |
+| `port` | yes | Defaults to `5432` |
+| `database` | yes | A session addresses one database; pick the one to replicate |
+| `username` | yes | |
+| `password` | yes | Stored as a secret |
+| `ssl_mode` | no | libpq vocabulary; defaults to `prefer` |
+| `ssl_ca_certificate` | no | PEM-encoded CA bundle; required for `verify-ca` / `verify-full` |
 
 ### How to get your credentials
 
@@ -54,15 +64,81 @@ PostgreSQL uses standard database credentials (username and password) to authent
    GRANT SELECT ON ALL TABLES IN SCHEMA public TO analitiq_user;
    ```
 4. Note the host address, port (default 5432), database name, username, and password
-5. If your PostgreSQL server requires SSL, obtain the CA certificate and optionally the client certificate and key from your database administrator
+5. If your server requires certificate verification, obtain the CA certificate from your database administrator
+
+### SSL modes
+
+The connector exposes PostgreSQL's own `sslmode` vocabulary:
+
+| Mode | Behaviour |
+|---|---|
+| `disable` | Never use SSL |
+| `allow` | Plaintext first, SSL as fallback |
+| `prefer` | SSL first, plaintext as fallback (**default**) |
+| `require` | SSL only; verifies the CA if one is supplied |
+| `verify-ca` | SSL only, verify the issuing CA |
+| `verify-full` | Verify the CA **and** that the hostname matches the certificate |
+
+## Transports
+
+The connector ships two transports and uses ADBC by default:
+
+- **`database` (ADBC, default)** -- the first-class `adbc-driver-postgresql` driver. Reads and writes Arrow buffers directly and bulk-loads via PostgreSQL's native `COPY` protocol, so there is no row-by-row path.
+- **`sqlalchemy`** -- `postgresql+asyncpg`, used as the engine-side SQL and metadata path.
+
+Both transports receive the SSL mode and the CA certificate.
+
+Tables and views are discovered at runtime from `information_schema`; the `information_schema`, `pg_catalog`, and `pg_toast` schemas are excluded automatically.
+
+## Type mapping
+
+Types are converted through `definition/type-map-read.json` (PostgreSQL to Arrow) and `definition/type-map-write.json` (Arrow to PostgreSQL DDL). Notable cases:
+
+| PostgreSQL | Arrow | Why |
+|---|---|---|
+| `NUMERIC(p,s)` within Arrow's range | `Decimal128` / `Decimal256` | Precision preserved as declared |
+| `NUMERIC` unconstrained, or `p > 76`, or `scale > precision`, or negative scale | `Utf8` | Arbitrary precision (up to 131072 digits) and `NaN`/`Infinity` have no exact Arrow decimal; text is lossless |
+| `TIMESTAMP` | `Timestamp` (no zone) | Zoneless on the wire |
+| `TIMESTAMPTZ` | `Timestamp(..., UTC)` | Stored internally as UTC; the originating zone is not retained |
+| `TIME WITH TIME ZONE` | `Time32` / `Time64` | **The UTC offset is dropped** -- Arrow has no time-with-offset type |
+| `INTERVAL` | `Utf8` | Stores months, days and microseconds independently; not a fixed-length duration |
+| `JSON`, `JSONB` | `Json` | |
+| arrays (`integer[]`, ...) | `Json` | |
+| enum / composite (`USER-DEFINED`) | `Utf8` | Enum declaration order is not preserved |
+| `MONEY` | `Utf8` | Fraction digits depend on the server's `lc_monetary` |
+| geometric, network, range, text-search, `reg*` types | `Utf8` | Rendered in their PostgreSQL text form |
+| `OID` | `UInt32` | Unsigned four-byte integer |
+
+Writing back, `Json` / `Object` / `List` all render as `JSONB`, and `UInt64` renders as `NUMERIC(20, 0)` because it exceeds `bigint`'s range. `Duration` renders as `TEXT` rather than `INTERVAL`: because `INTERVAL` reads back as `Utf8` (see the table above), rendering `Duration` as `INTERVAL` would make a re-created destination table change its own column types on every cycle.
+
+## Write behaviour
+
+- **Upserts** use `INSERT ... ON CONFLICT (...) DO UPDATE`, which is available on all supported PostgreSQL versions.
+- **Staging** uses a real (non-temporary) table in the target schema, created with `CREATE TABLE ... (LIKE target INCLUDING DEFAULTS)`. Constraints and indexes are deliberately not copied — a stage needs neither, and a copied `UNIQUE` constraint would reject the very rows the upsert exists to resolve. PostgreSQL DDL is transactional, so staging rides inside the write transaction.
+- **Bulk load** on the ADBC transport uses native Arrow ingest over `COPY`.
+- Errors are classified from PostgreSQL `SQLSTATE` codes, so the engine can distinguish retryable failures (deadlocks, serialization failures) from permanent ones (constraint violations, authentication errors).
 
 ## Limitations
 
-- **SSL mode** -- Defaults to `prefer`, which attempts encrypted connections but falls back to unencrypted if the server does not support SSL. Set to `require` or higher for enforced encryption. For production, `verify-ca` or `verify-full` is recommended.
-- **CA-pinned verification by transport** -- The uploaded SSL CA certificate is applied on the SQLAlchemy transport. On the default ADBC transport, `verify-ca`/`verify-full` rely on libpq's default CA lookup (`~/.postgresql/root.crt`); the uploaded certificate is not passed through, so use the `sqlalchemy` transport when CA pinning is required.
-- **Upserts on the default transport require PostgreSQL 15+** -- The ADBC write path implements upserts via `MERGE`, available from PostgreSQL 15. On older servers, use the `sqlalchemy` transport (`INSERT ... ON CONFLICT`), which works on all supported versions.
-- **No rate limits** -- This is a direct database connection; no API rate limits apply. However, heavy queries may impact database performance.
-- **Schema access** -- The user must have `USAGE` privilege on each schema they need to access. By default, only `public` is accessible.
+- **SSL mode defaults to `prefer`**, which attempts an encrypted connection but falls back to unencrypted if the server declines. Set `require` or higher to forbid that fallback; `verify-ca` or `verify-full` is recommended for production.
+- **`time with time zone` loses its offset** on read (see [Type mapping](#type-mapping)). Use `timestamptz` if the offset matters.
+- **Unconstrained `NUMERIC` arrives as text**, not a decimal. This is deliberate -- PostgreSQL allows far more precision than any Arrow decimal can hold -- but downstream consumers must cast if they need arithmetic.
+- **Catalog addressing is not supported.** A PostgreSQL session can only see its own database, so replicating across databases requires one connection per database.
+- **Schema access** -- the user must have `USAGE` privilege on each schema they need to reach. By default only `public` is accessible.
+- **No rate limits** -- this is a direct database connection, so no API limits apply. Heavy queries may still affect database performance.
+
+## Upgrading to 2.0.0
+
+Version 2.0.0 changes how several types are converted. If you have existing pipelines, the following columns will change type downstream:
+
+- `OID` columns move from `Int64` to `UInt32`.
+- Unconstrained `NUMERIC`/`DECIMAL` columns move from a fixed `Decimal128(38, 9)` to `Utf8`. The previous fixed precision silently truncated values that exceeded it.
+- `NUMERIC(p,s)` declarations outside Arrow's legal range (including `scale > precision`) now resolve to `Utf8` instead of producing an invalid decimal type.
+- On the write side, `UInt64` now renders as `NUMERIC(20, 0)` instead of `BIGINT`, which previously overflowed for values above 9223372036854775807. Existing target tables created as `BIGINT` will not match the new declared type.
+
+`Duration` now writes as `TEXT` instead of `INTERVAL`, so that the read and write maps converge.
+
+**CA pinning works on the `sqlalchemy` transport only.** The uploaded `ssl_ca_certificate` is applied there. It cannot reach the default ADBC transport: the libpq ADBC driver rejects every `adbc.postgresql.*` database option with `NOT_IMPLEMENTED` before any network I/O, and libpq's own `sslrootcert` expects a filesystem path, which a stored PEM secret cannot supply. Under ADBC, `verify-ca` and `verify-full` fall back to libpq's default CA lookup at `~/.postgresql/root.crt`. Select the `sqlalchemy` transport when you need to pin a CA.
 
 ## For AI agents
 
