@@ -139,7 +139,7 @@ Version 2.0.0 changes how several types are converted. If you have existing pipe
 
 `Duration` now writes as `TEXT` instead of `INTERVAL`, so that the read and write maps converge.
 
-**CA pinning works on the `sqlalchemy` transport only.** The uploaded `ssl_ca_certificate` is applied there. It cannot reach the default ADBC transport: the libpq ADBC driver rejects every `adbc.postgresql.*` database option with `NOT_IMPLEMENTED` before any network I/O, and libpq's own `sslrootcert` expects a filesystem path, which a stored PEM secret cannot supply. Under ADBC, `verify-ca` and `verify-full` fall back to libpq's default CA lookup at `~/.postgresql/root.crt`. Select the `sqlalchemy` transport when you need to pin a CA.
+**CA pinning on the default ADBC transport is not possible.** See [Transports](#transports) and [Limitations](#limitations) for details.
 
 ## For AI agents
 
