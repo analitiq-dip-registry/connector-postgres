@@ -13,7 +13,7 @@
     "adbc",
     "sqlalchemy"
   ],
-  "version": "1.0.0",
+  "version": "2.0.0",
   "default_transport": "database",
   "transports": {
     "database": {
@@ -24,23 +24,33 @@
         "template": "postgresql://{username}:{password}@{host}:{port}/{database}",
         "bindings": {
           "username": {
-            "value": { "ref": "connection.parameters.username" },
+            "value": {
+              "ref": "connection.parameters.username"
+            },
             "encoding": "url_userinfo"
           },
           "password": {
-            "value": { "ref": "secrets.password" },
+            "value": {
+              "ref": "secrets.password"
+            },
             "encoding": "url_userinfo"
           },
           "host": {
-            "value": { "ref": "connection.parameters.host" },
+            "value": {
+              "ref": "connection.parameters.host"
+            },
             "encoding": "host"
           },
           "port": {
-            "value": { "ref": "connection.parameters.port" },
+            "value": {
+              "ref": "connection.parameters.port"
+            },
             "encoding": "raw"
           },
           "database": {
-            "value": { "ref": "connection.parameters.database" },
+            "value": {
+              "ref": "connection.parameters.database"
+            },
             "encoding": "url_path_segment"
           }
         }
@@ -54,30 +64,44 @@
         "template": "postgresql+asyncpg://{username}:{password}@{host}:{port}/{database}",
         "bindings": {
           "username": {
-            "value": { "ref": "connection.parameters.username" },
+            "value": {
+              "ref": "connection.parameters.username"
+            },
             "encoding": "url_userinfo"
           },
           "password": {
-            "value": { "ref": "secrets.password" },
+            "value": {
+              "ref": "secrets.password"
+            },
             "encoding": "url_userinfo"
           },
           "host": {
-            "value": { "ref": "connection.parameters.host" },
+            "value": {
+              "ref": "connection.parameters.host"
+            },
             "encoding": "host"
           },
           "port": {
-            "value": { "ref": "connection.parameters.port" },
+            "value": {
+              "ref": "connection.parameters.port"
+            },
             "encoding": "raw"
           },
           "database": {
-            "value": { "ref": "connection.parameters.database" },
+            "value": {
+              "ref": "connection.parameters.database"
+            },
             "encoding": "url_path_segment"
           }
         }
       },
       "tls": {
-        "mode": { "ref": "connection.parameters.ssl_mode" },
-        "ca_certificate": { "ref": "secrets.ssl_ca_certificate" }
+        "mode": {
+          "ref": "connection.parameters.ssl_mode"
+        },
+        "ca_certificate": {
+          "ref": "secrets.ssl_ca_certificate"
+        }
       }
     }
   },
@@ -169,12 +193,30 @@
           "widget": "select",
           "help_text": "libpq sslmode vocabulary. 'prefer' is PostgreSQL's documented default and falls back to plaintext if the server declines TLS; use 'require' or higher to forbid that fallback.",
           "options": [
-            { "value": "disable", "label": "Disable - never use SSL" },
-            { "value": "allow", "label": "Allow - plaintext first, SSL as fallback" },
-            { "value": "prefer", "label": "Prefer - SSL first, plaintext as fallback (default)" },
-            { "value": "require", "label": "Require - SSL only, verify CA if one is supplied" },
-            { "value": "verify-ca", "label": "Verify CA - SSL only, verify the issuing CA" },
-            { "value": "verify-full", "label": "Verify Full - verify CA and server hostname" }
+            {
+              "value": "disable",
+              "label": "Disable - never use SSL"
+            },
+            {
+              "value": "allow",
+              "label": "Allow - plaintext first, SSL as fallback"
+            },
+            {
+              "value": "prefer",
+              "label": "Prefer - SSL first, plaintext as fallback (default)"
+            },
+            {
+              "value": "require",
+              "label": "Require - SSL only, verify CA if one is supplied"
+            },
+            {
+              "value": "verify-ca",
+              "label": "Verify CA - SSL only, verify the issuing CA"
+            },
+            {
+              "value": "verify-full",
+              "label": "Verify Full - verify CA and server hostname"
+            }
           ]
         }
       },
@@ -197,9 +239,14 @@
         {
           "when": {
             "field": "ssl_mode",
-            "in": ["verify-ca", "verify-full"]
+            "in": [
+              "verify-ca",
+              "verify-full"
+            ]
           },
-          "require": ["ssl_ca_certificate"],
+          "require": [
+            "ssl_ca_certificate"
+          ],
           "message": "ssl_ca_certificate is required when ssl_mode is verify-ca or verify-full"
         }
       ]

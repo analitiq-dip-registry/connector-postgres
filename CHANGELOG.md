@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.0] - 2026-08-02
+
+### Changed
+- feat!: rebuild against the rc17 write-path contract (#22)
+
 ## [1.0.0] - 2026-07-23
 
 ### Changed
