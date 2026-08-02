@@ -1,17 +1,19 @@
 """Unit tests for PostgresDialect write-path hooks and TLS configuration.
 
-Covers the three entry points that have no other automated coverage:
+Covers:
 - stage_table_sql     — DDL renderer for the staging relation
 - merge_statement_sql — upsert renderer (ON CONFLICT)
-- build_tls_connect_arg — libpq ssl_mode → asyncpg SSLContext mapping
+- build_tls_connect_arg — libpq ssl_mode -> asyncpg SSLContext mapping
 
 Plus two contract pins that guard against silent regressions:
-- max_identifier_length must equal sql_capabilities.limits.max_identifier_len (63)
+- max_identifier_length must equal sql_capabilities.limits.max_identifier_len
 - empty_table_sql must not use TRUNCATE (the CDK conformance kit rejects it)
 """
 
 from __future__ import annotations
 
+import json
+import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -46,8 +48,6 @@ class TestStageTableSql:
         sql = dialect.stage_table_sql(tricky_stage, tricky_target, temp=False)
         assert '"my schema"."stage; DROP TABLE x"' in sql
         assert '"my schema"."orders; DROP TABLE x"' in sql
-        assert "DROP TABLE x" in sql  # present but safely quoted
-        # The outer structure is still the CREATE statement
         assert sql.startswith("CREATE TABLE")
 
     def test_create_keyword_is_conditional_on_temp(self, dialect, stage, target):
@@ -75,13 +75,16 @@ class TestMergeStatementSql:
         )
 
     def test_do_nothing_when_all_columns_are_conflict_keys(self, dialect, stage, target):
-        # Every landed column is a conflict key → empty SET list would be a syntax
+        # Every landed column is a conflict key -- empty SET list would be a syntax
         # error; the dialect must degrade to DO NOTHING.
         columns = ["id", "name"]
         conflict_keys = ["id", "name"]
         sql = dialect.merge_statement_sql(stage, target, conflict_keys, columns)
-        assert "DO NOTHING" in sql
-        assert "DO UPDATE SET" not in sql
+        assert sql == (
+            'INSERT INTO "myschema"."orders" ("id", "name") '
+            'SELECT "id", "name" FROM "myschema"."_stage_orders" '
+            'ON CONFLICT ("id", "name") DO NOTHING'
+        )
 
     def test_composite_conflict_keys(self, dialect, stage, target):
         columns = ["tenant_id", "order_id", "amount"]
@@ -92,14 +95,16 @@ class TestMergeStatementSql:
         assert '"tenant_id" = EXCLUDED."tenant_id"' not in sql
 
     def test_column_order_preserved(self, dialect, stage, target):
-        """Columns appear in the INSERT list in the order supplied."""
+        """Columns appear in the INSERT and SELECT lists in the order supplied."""
         columns = ["z_col", "a_col", "m_col"]
         conflict_keys = ["z_col"]
         sql = dialect.merge_statement_sql(stage, target, conflict_keys, columns)
-        insert_list_start = sql.index("(") + 1
-        insert_list_end = sql.index(")")
-        insert_list = sql[insert_list_start:insert_list_end]
-        assert insert_list == '"z_col", "a_col", "m_col"'
+        assert sql == (
+            'INSERT INTO "myschema"."orders" ("z_col", "a_col", "m_col") '
+            'SELECT "z_col", "a_col", "m_col" FROM "myschema"."_stage_orders" '
+            'ON CONFLICT ("z_col") '
+            'DO UPDATE SET "a_col" = EXCLUDED."a_col", "m_col" = EXCLUDED."m_col"'
+        )
 
     def test_identifiers_are_quoted(self, dialect):
         """Column names must be quoted, not interpolated raw."""
@@ -123,6 +128,7 @@ _FAKE_CA = "-----BEGIN CERTIFICATE-----\nMIIBxxx\n-----END CERTIFICATE-----\n"
 
 
 class TestBuildTlsConnectArg:
+    # "require" is tested separately: it has two cases (with CA and without CA).
     @pytest.mark.parametrize("mode", ["disable", "allow", "prefer"])
     def test_passthrough_modes_return_mode_string(self, dialect, mode):
         result = dialect.build_tls_connect_arg(mode, None)
@@ -130,6 +136,12 @@ class TestBuildTlsConnectArg:
 
     def test_require_without_ca_returns_mode_string(self, dialect):
         result = dialect.build_tls_connect_arg("require", None)
+        assert result == "require"
+
+    def test_require_with_empty_string_ca_is_passthrough(self, dialect):
+        # An empty string is falsy and is not a usable CA bundle; require + ""
+        # must behave the same as require + None (passthrough, no verification).
+        result = dialect.build_tls_connect_arg("require", "")
         assert result == "require"
 
     def test_require_with_ca_verifies(self, dialect):
@@ -176,9 +188,13 @@ class TestBuildTlsConnectArg:
 
 class TestContractPins:
     def test_max_identifier_length_matches_sql_capabilities(self, dialect):
-        # sql_capabilities.limits.max_identifier_len = 63 (definition/connector.json).
-        # A silent divergence causes tier-1 conformance failures.
-        assert dialect.max_identifier_length == 63
+        # Cross-checks the dialect value against the published connector contract
+        # so a silent divergence between the two causes this test to fail rather
+        # than a tier-1 conformance failure at the registry.
+        declared = json.loads(
+            pathlib.Path("definition/connector.json").read_text()
+        )["sql_capabilities"]["limits"]["max_identifier_len"]
+        assert dialect.max_identifier_length == declared
 
     def test_empty_table_sql_uses_delete_not_truncate(self, dialect, target):
         # The CDK conformance kit rejects TRUNCATE unconditionally; the base
