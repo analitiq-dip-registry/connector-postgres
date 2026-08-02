@@ -1,9 +1,13 @@
 # THIS connector's drivers only. The engine environment provides
-# SQLAlchemy and the CDK — never list them here, even if an import
+# SQLAlchemy and the CDK - never list them here, even if an import
 # appears "missing".
+#
 # ADBC transport (default): first-class PostgreSQL driver, libpq
-# COPY-based Arrow ingestion.
+# COPY-based Arrow ingestion. The engine derives the dbapi module from
+# the connector's `driver: postgresql` as adbc_driver_postgresql.dbapi,
+# so both wheels are required.
 adbc-driver-postgresql>=1.1.0
 adbc-driver-manager>=1.1.0
-# SQLAlchemy transport: async DBAPI for postgresql+asyncpg.
+# SQLAlchemy transport: async DBAPI for postgresql+asyncpg. Its `ssl`
+# connect argument is what PostgresDialect.build_tls_connect_arg feeds.
 asyncpg>=0.28.0

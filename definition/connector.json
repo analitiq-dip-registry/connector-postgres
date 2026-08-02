@@ -3,7 +3,7 @@
   "kind": "database",
   "connector_id": "postgres",
   "display_name": "PostgreSQL",
-  "description": "PostgreSQL database connector. Reads and writes Arrow data over the first-class ADBC libpq driver (COPY-based bulk ingestion) as the default transport, with an async SQLAlchemy (asyncpg) transport as the engine-side SQL path. Username/password authentication, libpq TLS modes (disable through verify-full), and table/view discovery via information_schema.",
+  "description": "PostgreSQL database connector. Reads and writes Arrow data over the first-class ADBC libpq driver (COPY-based bulk ingestion) as the default transport, with an async SQLAlchemy (asyncpg) transport as the engine-side SQL/metadata path. Username/password authentication, libpq TLS modes (disable through verify-full), schema/table/view discovery via information_schema, and declared SQL write-path capabilities (INSERT ... ON CONFLICT upsert, real staging relations, transactional DDL, ADBC native ingest).",
   "documentation_url": "https://www.postgresql.org/docs/current/",
   "tags": [
     "database",
@@ -24,40 +24,25 @@
         "template": "postgresql://{username}:{password}@{host}:{port}/{database}",
         "bindings": {
           "username": {
-            "value": {
-              "ref": "connection.parameters.username"
-            },
+            "value": { "ref": "connection.parameters.username" },
             "encoding": "url_userinfo"
           },
           "password": {
-            "value": {
-              "ref": "secrets.password"
-            },
+            "value": { "ref": "secrets.password" },
             "encoding": "url_userinfo"
           },
           "host": {
-            "value": {
-              "ref": "connection.parameters.host"
-            },
+            "value": { "ref": "connection.parameters.host" },
             "encoding": "host"
           },
           "port": {
-            "value": {
-              "ref": "connection.parameters.port"
-            },
+            "value": { "ref": "connection.parameters.port" },
             "encoding": "raw"
           },
           "database": {
-            "value": {
-              "ref": "connection.parameters.database"
-            },
+            "value": { "ref": "connection.parameters.database" },
             "encoding": "url_path_segment"
           }
-        }
-      },
-      "db_kwargs": {
-        "adbc.postgresql.sslmode": {
-          "ref": "connection.parameters.ssl_mode"
         }
       }
     },
@@ -69,44 +54,30 @@
         "template": "postgresql+asyncpg://{username}:{password}@{host}:{port}/{database}",
         "bindings": {
           "username": {
-            "value": {
-              "ref": "connection.parameters.username"
-            },
+            "value": { "ref": "connection.parameters.username" },
             "encoding": "url_userinfo"
           },
           "password": {
-            "value": {
-              "ref": "secrets.password"
-            },
+            "value": { "ref": "secrets.password" },
             "encoding": "url_userinfo"
           },
           "host": {
-            "value": {
-              "ref": "connection.parameters.host"
-            },
+            "value": { "ref": "connection.parameters.host" },
             "encoding": "host"
           },
           "port": {
-            "value": {
-              "ref": "connection.parameters.port"
-            },
+            "value": { "ref": "connection.parameters.port" },
             "encoding": "raw"
           },
           "database": {
-            "value": {
-              "ref": "connection.parameters.database"
-            },
+            "value": { "ref": "connection.parameters.database" },
             "encoding": "url_path_segment"
           }
         }
       },
       "tls": {
-        "mode": {
-          "ref": "connection.parameters.ssl_mode"
-        },
-        "ca_certificate": {
-          "ref": "secrets.ssl_ca_certificate"
-        }
+        "mode": { "ref": "connection.parameters.ssl_mode" },
+        "ca_certificate": { "ref": "secrets.ssl_ca_certificate" }
       }
     }
   },
@@ -121,11 +92,11 @@
         "storage": "connection.parameters",
         "type": "string",
         "required": true,
-        "default": "127.0.0.1",
         "ui": {
           "label": "Host",
           "widget": "text",
-          "placeholder": "e.g. 127.0.0.1 or db.example.com"
+          "placeholder": "e.g. db.example.com",
+          "help_text": "Hostname or IP address of the PostgreSQL server."
         }
       },
       "port": {
@@ -137,7 +108,8 @@
         "default": 5432,
         "ui": {
           "label": "Port",
-          "widget": "text"
+          "widget": "number",
+          "help_text": "TCP port the server listens on; 5432 by default."
         }
       },
       "database": {
@@ -149,7 +121,8 @@
         "ui": {
           "label": "Database",
           "widget": "text",
-          "placeholder": "e.g. my_database"
+          "placeholder": "e.g. my_database",
+          "help_text": "A PostgreSQL session can only address one database; pick the one to replicate."
         }
       },
       "username": {
@@ -194,31 +167,14 @@
         "ui": {
           "label": "SSL Mode",
           "widget": "select",
+          "help_text": "libpq sslmode vocabulary. 'prefer' is PostgreSQL's documented default and falls back to plaintext if the server declines TLS; use 'require' or higher to forbid that fallback.",
           "options": [
-            {
-              "value": "disable",
-              "label": "Disable"
-            },
-            {
-              "value": "allow",
-              "label": "Allow"
-            },
-            {
-              "value": "prefer",
-              "label": "Prefer (Default)"
-            },
-            {
-              "value": "require",
-              "label": "Require"
-            },
-            {
-              "value": "verify-ca",
-              "label": "Verify CA"
-            },
-            {
-              "value": "verify-full",
-              "label": "Verify Full"
-            }
+            { "value": "disable", "label": "Disable - never use SSL" },
+            { "value": "allow", "label": "Allow - plaintext first, SSL as fallback" },
+            { "value": "prefer", "label": "Prefer - SSL first, plaintext as fallback (default)" },
+            { "value": "require", "label": "Require - SSL only, verify CA if one is supplied" },
+            { "value": "verify-ca", "label": "Verify CA - SSL only, verify the issuing CA" },
+            { "value": "verify-full", "label": "Verify Full - verify CA and server hostname" }
           ]
         }
       },
@@ -231,7 +187,8 @@
         "secret": true,
         "ui": {
           "label": "SSL CA Certificate",
-          "widget": "textarea"
+          "widget": "textarea",
+          "help_text": "PEM-encoded CA bundle used to verify the server certificate. Required for verify-ca and verify-full; when supplied with 'require', libpq verifies the CA as if verify-ca had been requested."
         }
       }
     },
@@ -240,17 +197,89 @@
         {
           "when": {
             "field": "ssl_mode",
-            "in": [
-              "verify-ca",
-              "verify-full"
-            ]
+            "in": ["verify-ca", "verify-full"]
           },
-          "require": [
-            "ssl_ca_certificate"
-          ],
+          "require": ["ssl_ca_certificate"],
           "message": "ssl_ca_certificate is required when ssl_mode is verify-ca or verify-full"
         }
       ]
+    }
+  },
+  "sql_capabilities": {
+    "catalog": "none",
+    "session_targeting": "per_statement",
+    "merge_form": "insert_on_conflict",
+    "bulk_load": {
+      "adbc": "adbc_ingest"
+    },
+    "stage": {
+      "scope": "real",
+      "schema": "target",
+      "transactional_ddl": true
+    },
+    "limits": {
+      "max_bind_params": 65535,
+      "max_identifier_len": 63
+    }
+  },
+  "error_map": {
+    "sqlstate": {
+      "08000": "unreachable",
+      "08001": "unreachable",
+      "08003": "unreachable",
+      "08004": "unreachable",
+      "08006": "unreachable",
+      "08007": "transient",
+      "08P01": "transient",
+      "22001": "write_rejected",
+      "22003": "write_rejected",
+      "22012": "write_rejected",
+      "22P02": "write_rejected",
+      "23000": "write_rejected",
+      "23001": "write_rejected",
+      "23502": "write_rejected",
+      "23503": "write_rejected",
+      "23505": "write_rejected",
+      "23514": "write_rejected",
+      "23P01": "write_rejected",
+      "28000": "auth",
+      "28P01": "auth",
+      "3D000": "config",
+      "3F000": "config",
+      "40000": "transient",
+      "40001": "transient",
+      "40002": "write_rejected",
+      "40003": "transient",
+      "40P01": "transient",
+      "42501": "auth",
+      "42601": "config",
+      "42703": "config",
+      "42P01": "config",
+      "53000": "transient",
+      "53100": "transient",
+      "53200": "transient",
+      "53300": "rate_limited",
+      "53400": "config",
+      "55000": "config",
+      "55006": "transient",
+      "55P02": "config",
+      "55P03": "transient",
+      "55P04": "config",
+      "57000": "transient",
+      "57014": "transient",
+      "57P01": "transient",
+      "57P02": "transient",
+      "57P03": "unreachable",
+      "57P04": "config",
+      "57P05": "transient",
+      "58000": "transient",
+      "58030": "transient",
+      "58P01": "config",
+      "58P02": "config",
+      "58P03": "config",
+      "XX000": "transient",
+      "XX001": "config",
+      "XX002": "config"
     }
   },
   "resource_discovery": {
