@@ -28,3 +28,8 @@ postgres = "analitiq_connector_postgres.connector:PostgresConnector"
 
 [project.entry-points."analitiq.destination_connectors"]
 postgres = "analitiq_connector_postgres.connector:PostgresConnector"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--import-mode=importlib"
